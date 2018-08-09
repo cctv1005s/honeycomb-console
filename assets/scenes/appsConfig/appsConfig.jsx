@@ -9,12 +9,51 @@ const FormItem = Form.Item;
 const confirm = Modal.confirm;
 require('./appsConfig.less');
 let jsdiff = require('diff');
-let CodeMirror = require('react-codemirror');
+let CodeMirror = require('../../coms/commentCM');
 let User = require("../../services/user");
 require('codemirror/lib/codemirror.css');
 require('codemirror/mode/javascript/javascript');
 const URL = require("url");
 import ConfigDiff from './config-diff';
+import jsonParser from 'editor-json-parser';
+
+
+const COMMENT_FLAG = '_COMMENT_BLOCK_DONT_TOUCH_';
+/**
+ * 
+ * @param {Object} widget 输入的注释框内容
+ * @param {Object} code 编辑器中的内容
+ */
+const mergeCode = (code, comment) => {
+  const json = jsonParser.parse(code);
+  json[COMMENT_FLAG] = comment;
+  return JSON.stringify(json, null, 2);
+}
+
+const extracCode = (code) => {
+  if(!code){
+    return {
+      remark: [],
+      code: ''
+    }
+  }
+
+  let json = {};
+  try{
+    json = jsonParser.parse(code);
+  }catch(e){
+    console.log(e);
+  }
+
+  const comment = json[COMMENT_FLAG];
+  delete json[COMMENT_FLAG];
+  const showCode = JSON.stringify(json, null, 2);
+  return {
+    comment,
+    code: showCode
+  };
+}
+
 
 class AppsConfig extends React.Component {
   state = {
@@ -22,6 +61,7 @@ class AppsConfig extends React.Component {
     currentAppConfig:' ',
     currentApp:'',
     newAppConfig:' ',
+    comment: {},
     loading: false,
     code: '',
     showDiff: false,
@@ -48,6 +88,7 @@ class AppsConfig extends React.Component {
       newAppConfig:currentAppConfig
     })
   }
+
   handleAppsConfig = (operation, value) => {
     let clusterCode = URL.parse(window.location.href, true).query.clusterCode;
     let appName = this.state.currentApp;
@@ -69,10 +110,15 @@ class AppsConfig extends React.Component {
         }catch(err){
           console.log(err);
         }
+
+        const {
+          code, comment 
+        } = extracCode(res);
         this.setState({
-          currentAppConfig : res,
-          newAppConfig: res,
+          currentAppConfig : code,
+          newAppConfig: code,
           currentApp : value,
+          comment: comment
         })
       })
     } else if(operation === 'set') {
@@ -94,7 +140,7 @@ class AppsConfig extends React.Component {
         iconType: 'question-circle-o',
         width: 600,
         onOk: () => {
-          let appConfig = this.state.newAppConfig;
+          let appConfig = mergeCode(this.state.newAppConfig, this.state.comment);
           this.props.setAppConfig({clusterCode:clusterCode,appConfig:appConfig,type:type},{appId:appId}).then((result)=>{
             this.props.getAppsConfig({clusterCode:clusterCode,type: type},{appId: appId}).then((result)=>{
               this.setState({loading: true})
@@ -106,9 +152,13 @@ class AppsConfig extends React.Component {
               }catch(err){
                 console.log(err);
               }
+              const {
+                code, comment 
+              } = extracCode(res);              
               this.setState({
-                currentAppConfig : res,
-                newAppConfig: res,
+                currentAppConfig : code,
+                newAppConfig: code,
+                comment: comment,
                 isEdit : false,
               })
             })
@@ -121,13 +171,20 @@ class AppsConfig extends React.Component {
       });
     }
   }
+
   changeAppsConfig = (e) => {
     this.setState({
       newAppConfig: e
     })
   }
-  render() {
 
+  commentChange = (comment) => {
+    this.setState({
+      comment
+    });
+  }
+
+  render() {
     if(this.state.showDiff){
       return <ConfigDiff onFinish={this.hideDiff}/>
     }
@@ -142,46 +199,64 @@ class AppsConfig extends React.Component {
     const formItemLayout = {
       wrapperCol: { span: 25 },
     };
-      return(
-        <div className="appsconfig-wrap">
-          <div className="appsconfig-select">
-            <span><h3>请选择app:</h3></span>
-            <Select defaultValue="请选择app" size="large" style={{ width: 200 }}
-              getPopupContainer={() => document.getElementsByClassName('appsconfig-wrap')[0]}
-              onChange={this.handleAppsConfig.bind(this,"get")}
-            >
-              {membersList}
-              <Option value="" disabled>————————</Option>
-              <Option value="server:common"> common </Option>
-              <Option value="server:server"> server </Option>
-            </Select>
-          </div>
-          <div className="appsconfig-textarea">
-            <span className="appsconfig-text-title"><h3>配置信息：</h3></span>
-            {
-              this.state.isEdit ?
+
+    return(
+      <div className="appsconfig-wrap">
+        <div className="appsconfig-select">
+          <span><h3>请选择app:</h3></span>
+          <Select defaultValue="请选择app" size="large" style={{ width: 200 }}
+            getPopupContainer={() => document.getElementsByClassName('appsconfig-wrap')[0]}
+            onChange={this.handleAppsConfig.bind(this,"get")}
+          >
+            {membersList}
+            <Option value="" disabled>————————</Option>
+            <Option value="server:common"> common </Option>
+            <Option value="server:server"> server </Option>
+          </Select>
+        </div>
+        <div className="appsconfig-textarea">
+          <span className="appsconfig-text-title"><h3>配置信息：</h3></span>
+          {
+            this.state.isEdit ?
+            (
               <div className="appsconfig-text">
                 <Spin tip="Loading..." spinning={this.state.loading}>
-                  <CodeMirror value={this.state.newAppConfig} onChange={this.changeAppsConfig} options={{lineNumbers:true,mode:'javascript'}} />
+                  <CodeMirror 
+                    value={this.state.newAppConfig} 
+                    onChange={this.changeAppsConfig}
+                    options={{lineNumbers:true,mode:'javascript'}}
+                    comment={this.state.comment}
+                    onCommentChange={this.commentChange}
+                    key="edit"
+                  />
                 </Spin>
                 <div>
                   <Button onClick={this.handleAppsConfig.bind(this,"set", this.state.configName)} type="primary">提交</Button>
                   <Button onClick={this.closeEditConfig}>取消</Button>
                 </div>
-              </div> : <div className="appsconfig-pre">
+              </div>
+            ) : 
+            (
+              <div className="appsconfig-pre">
                 <Spin tip="Loading..." spinning={this.state.loading}>
-                  <pre>{this.state.currentAppConfig}</pre>
+                  <CodeMirror 
+                    value={this.state.newAppConfig} 
+                    options={{lineNumbers:true,mode:'javascript', readOnly: true, cursorHeight: 0 }}
+                    comment={this.state.comment}
+                    key="show"
+                  />
                 </Spin>
                 <div>
                   <Button type="primary" onClick={this.showEditConfig}>编辑配置</Button>
                   &nbsp;&nbsp;
                   <Button type="primary" onClick={this.showDiff}>配置对比</Button>
                 </div>
-            </div>
-            }
-          </div>
+              </div>
+            )
+          }
         </div>
-      )
+      </div>
+    )
   }
 }
 

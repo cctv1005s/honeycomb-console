@@ -1,0 +1,55 @@
+.remark-show{
+  font-style: italic;
+  text-decoration: underline;
+  color: #aaa;
+  cursor: pointer; 
+}
+
+.icon-up{
+  transform: rotate(90deg);
+}
+
+.icon-right{
+  transform: rotate(180deg);
+}
+
+.remark-edit{
+  background: #32383e;
+  font-size: 15px;
+  max-width: 400px;
+  color: white;
+  overflow: auto;
+  border-radius: 1px;
+}
+
+.remark-tool-box{
+  float: left;
+  width: 150px;
+  & > div{
+    line-height: 40px;
+    height: 40px;
+    width: 30px;
+    text-align: center;
+    cursor: pointer;
+    float: left;
+  }
+}
+
+
+.remark-input-box{
+  float: left;
+  width: calc(~"100% - 150px");
+  height: 40px;
+  padding: 5px;
+  & > input{
+    width: 100%;
+    height: 100%;  
+    color: black; 
+    padding-left: 10px;
+  }
+}
+
+// 覆盖默认的z-index
+.CodeMirror-linewidget{
+  z-index: 3 !important;
+}

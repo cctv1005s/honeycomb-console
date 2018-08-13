@@ -31,7 +31,7 @@ import Panel from './panel';
  * @param {Object} widget Widget
  * @return 
  */
-const getComment = (widget) => {
+const getComment = (widget, editor) => {
   const comment = {};
   Object.keys(widget).forEach(key => {
     // 过滤空字符串
@@ -39,7 +39,11 @@ const getComment = (widget) => {
     if(!_comment.trim()){
       return;
     }
-    comment[key] = {
+    let lineNumber = editor.getLineNumber(widget[key].instance.line);
+    if(!lineNumber){
+      return;
+    }
+    comment[lineNumber] = {
       comment: widget[key].comment,
       indent: widget[key].indent || 0,
       color: widget[key].color || '#aaa',
@@ -76,6 +80,10 @@ class CommentCodeMirror extends React.Component{
     comment: PropTypes.object,
   }
 
+  static defaultProps = {
+    onCommentChange: () => null
+  }
+
   // Widget
   widget = {};
 
@@ -90,7 +98,7 @@ class CommentCodeMirror extends React.Component{
         this.widget[line].comment = value;
         this.widget[line].indent = indent;
         this.widget[line].color = color;
-        const comment = getComment(this.widget);
+        const comment = getComment(this.widget, this.editor);
         this.props.onCommentChange(comment);
       }
     }
@@ -106,7 +114,7 @@ class CommentCodeMirror extends React.Component{
       if(this.widget[line]){
         this.widget[line].instance.clear();
         delete this.widget[line];
-        const comment = getComment(this.widget);
+        const comment = getComment(this.widget, this.editor);
         this.props.onCommentChange(comment);
       }
     }
@@ -132,6 +140,9 @@ class CommentCodeMirror extends React.Component{
    * @param {String} color 备注颜色, hex
    */
   renderComment = (line, value, mode = 'edit', indent = 0, color = '#aaa') => {
+    if(!Number(line)){
+      return;
+    }
     // 插入 widget
     const remark = document.createElement('div');
     ReactDOM.render(
@@ -154,11 +165,6 @@ class CommentCodeMirror extends React.Component{
       this.widget[line].indent = indent;
       this.widget[line].color = color;
     }
-    // 这一行删除时, 注释也删掉
-    const lineHandle = this.editor.getLineHandle(line);
-    lineHandle.on('delete', () => {
-      this.deleteLineComment(line)();
-    });
   }
 
   componentDidMount(){
@@ -174,14 +180,9 @@ class CommentCodeMirror extends React.Component{
     }
   }
 
-  changeComment = () => { 
-    _.each(this.widget, ({instance}) => {
-      if(instance){
-        instance.clear();
-      }
-    });
-    this.widget = {};
-    this.initComment();
+  changeComment = () => {
+    const comment = getComment(this.widget, this.editor);
+    this.props.onCommentChange(comment);    
   }
 
   // 初始化所有的comment

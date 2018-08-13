@@ -222,12 +222,12 @@ class AppsConfig extends React.Component {
               <div className="appsconfig-text">
                 <Spin tip="Loading..." spinning={this.state.loading}>
                   <CodeMirror 
-                    value={this.state.newAppConfig} 
+                    key={this.state.currentAppConfig} 
                     onChange={this.changeAppsConfig}
                     options={{lineNumbers:true,mode:'javascript'}}
                     comment={this.state.comment}
                     onCommentChange={this.commentChange}
-                    key="edit"
+                    value={this.state.newAppConfig + 'show'}
                   />
                 </Spin>
                 <div>
@@ -240,10 +240,10 @@ class AppsConfig extends React.Component {
               <div className="appsconfig-pre">
                 <Spin tip="Loading..." spinning={this.state.loading}>
                   <CodeMirror 
-                    value={this.state.newAppConfig} 
+                    value={this.state.newAppConfig + 'edit'}
                     options={{lineNumbers:true,mode:'javascript', readOnly: true, cursorHeight: 0 }}
                     comment={this.state.comment}
-                    key="show"
+                    value={this.state.newAppConfig}
                   />
                 </Spin>
                 <div>
